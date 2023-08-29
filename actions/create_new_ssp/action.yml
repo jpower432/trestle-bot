@@ -1,0 +1,37 @@
+name: "create-new-ssp"
+author: "Red Hat Product Security"
+description: "A workflow automation manager for OSCAL formatted compliance content"
+
+inputs:
+  output_name:
+    description: Name of the SSP to create
+    required: true
+  profile:
+    description: Email address used for the commit user
+    required: true
+  ssp_index_path:
+    description: Path relative to the repository path where the ssp index is located. See project README.md for information about the ssp index.
+    required: false
+    default: "ssp-index.json"
+  repository:
+    description: Local file path to the git repository. Defaults to the current directory (`.`)
+    required: false
+    default: '.'
+  component_definitions:
+    description: Name used for the commit user
+    required: false
+  leveraged_ssp:
+    description: Name used for the commit author. Defaults to the username of whoever triggered this workflow run.
+    required: false
+  filtered_ssp:
+    description: Email address used for the commit author. Defaults to the email of whoever triggered this workflow run.
+    required: false
+
+runs:
+  using: "docker"
+  image: "../Dockerfile"
+  entrypoint: "/entrypoint.sh"
+
+branding:
+  icon: "check"
+  color: "green"

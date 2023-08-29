@@ -22,12 +22,15 @@ import logging
 import sys
 from typing import List, Optional
 
+import click
+
 from trestlebot import bot, const, log
 from trestlebot.github import GitHub, is_github_actions
 from trestlebot.gitlab import GitLab, get_gitlab_root_url, is_gitlab_ci
 from trestlebot.provider import GitProvider
 from trestlebot.tasks.assemble_task import AssembleTask
 from trestlebot.tasks.authored import types
+from trestlebot.tasks.authored.ssp import AuthoredSSP, SSPIndex
 from trestlebot.tasks.base_task import TaskBase
 from trestlebot.tasks.regenerate_task import RegenerateTask
 
@@ -35,149 +38,142 @@ from trestlebot.tasks.regenerate_task import RegenerateTask
 logger = logging.getLogger("trestle")
 
 
-def _parse_cli_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Automation git actions for compliance-trestle"
-    )
-    parser.add_argument(
-        "--branch",
-        type=str,
-        required=True,
-        help="Branch name to push changes to",
-    )
-    parser.add_argument(
-        "--markdown-path",
-        required=True,
-        type=str,
-        help="Path to Trestle markdown files",
-    )
-    parser.add_argument(
-        "--oscal-model",
-        required=True,
-        type=str,
-        help="OSCAL model type to run tasks on. Values can be catalog, profile, compdef, or ssp",
-    )
-    parser.add_argument(
-        "--file-patterns",
-        required=True,
-        type=str,
-        help="Comma-separated list of file patterns to be used with `git add` in repository updates",
-    )
-    parser.add_argument(
-        "--skip-items",
-        type=str,
-        required=False,
-        help="Comma-separated list of items of the chosen model type to skip when running tasks",
-    )
-    parser.add_argument(
-        "--skip-assemble",
-        required=False,
-        action="store_true",
-        help="Skip assembly task. Defaults to false",
-    )
-    parser.add_argument(
-        "--skip-regenerate",
-        required=False,
-        action="store_true",
-        help="Skip regenerate task. Defaults to false.",
-    )
-    parser.add_argument(
-        "--check-only",
-        required=False,
-        action="store_true",
-        help="Runs tasks and exits with an error if there is a diff",
-    )
-    parser.add_argument(
-        "--working-dir",
-        type=str,
-        required=False,
-        default=".",
-        help="Working directory wit git repository",
-    )
-    parser.add_argument(
-        "--commit-message",
-        type=str,
-        required=False,
-        default="chore: automatic updates",
-        help="Commit message for automated updates",
-    )
-    parser.add_argument(
-        "--pull-request-title",
-        type=str,
-        required=False,
-        default="Automatic updates from trestlebot",
-        help="Customized title for submitted pull requests",
-    )
-    parser.add_argument(
-        "--committer-name",
-        type=str,
-        required=True,
-        help="Name of committer",
-    )
-    parser.add_argument(
-        "--committer-email",
-        type=str,
-        required=True,
-        help="Email for committer",
-    )
-    parser.add_argument(
-        "--author-name",
-        required=False,
-        type=str,
-        help="Name for commit author if differs from committer",
-    )
-    parser.add_argument(
-        "--author-email",
-        required=False,
-        type=str,
-        help="Email for commit author if differs from committer",
-    )
-    parser.add_argument(
-        "--ssp-index-path",
-        required=False,
-        type=str,
-        default="ssp-index.json",
-        help="Path to ssp index file",
-    )
-    parser.add_argument(
-        "--verbose",
-        required=False,
-        action="store_true",
-        help="Run in verbose mode",
-    )
-    parser.add_argument(
-        "--target-branch",
-        type=str,
-        required=False,
-        help="Target branch or base branch to create a pull request against. \
+@click.group()
+@click.option("--verbose", is_flag=True, help="Enable verbose output.")
+@click.pass_context
+def run(ctx: click.Context, verbose: bool):
+    ctx.ensure_object(argparse.Namespace)
+    ctx.obj.verbose = verbose
+    log.set_log_level_from_args(ctx.obj)
+
+
+@run.command()
+@click.option(
+    "--branch", type=str, required=True, help="Branch name to push changes to"
+)
+@click.option(
+    "--markdown-path", required=True, type=str, help="Path to Trestle markdown files"
+)
+@click.option(
+    "--oscal-model",
+    required=True,
+    type=str,
+    help="OSCAL model type to run tasks on. Values can be catalog, profile, compdef, or ssp",
+)
+@click.option(
+    "--file-patterns",
+    required=True,
+    type=str,
+    help="Comma-separated list of file patterns to be used with `git add` in repository updates",
+)
+@click.option(
+    "--working-dir",
+    required=False,
+    type=str,
+    default=".",
+    help="Working directory wit git repository",
+)
+@click.option(
+    "--skip-items",
+    type=str,
+    required=False,
+    help="Comma-separated list of items of the chosen model type to skip when running tasks",
+)
+@click.option(
+    "--skip-assemble",
+    required=False,
+    is_flag=True,
+    help="Skip assembly task. Defaults to false",
+)
+@click.option(
+    "--skip-regenerate",
+    required=False,
+    is_flag=True,
+    help="Skip regenerate task. Defaults to false.",
+)
+@click.option(
+    "--check-only",
+    required=False,
+    is_flag=True,
+    help="Runs tasks and exits with an error if there is a diff",
+)
+@click.option(
+    "--working-dir",
+    type=str,
+    required=False,
+    default=".",
+    help="Working directory wit git repository",
+)
+@click.option(
+    "--commit-message",
+    type=str,
+    required=False,
+    default="chore: automatic updates",
+    help="Commit message for automated updates",
+)
+@click.option(
+    "--pull-request-title",
+    type=str,
+    required=False,
+    default="Automatic updates from trestlebot",
+    help="Customized title for submitted pull requests",
+)
+@click.option("--committer-name", type=str, required=True, help="Name of committer")
+@click.option("--committer-email", type=str, required=True, help="Email for committer")
+@click.option(
+    "--author-name",
+    required=False,
+    type=str,
+    help="Name for commit author if differs from committer",
+)
+@click.option(
+    "--author-email",
+    required=False,
+    type=str,
+    help="Email for commit author if differs from committer",
+)
+@click.option(
+    "--ssp-index-path",
+    required=False,
+    type=str,
+    default="ssp-index.json",
+    help="Path to ssp index file",
+)
+@click.option(
+    "--target-branch",
+    type=str,
+    help="Target branch or base branch to create a pull request against. \
         No pull request is created if unset",
-    )
-    parser.add_argument(
-        "--with-token",
-        nargs="?",
-        type=argparse.FileType("r"),
-        required=False,
-        default=sys.stdin,
-        help="Read token from standard input for authenticated requests with \
-        Git provider (e.g. create pull requests)",
-    )
-    return parser.parse_args()
-
-
-def handle_exception(
-    exception: Exception, msg: str = "Exception occurred during execution"
-) -> int:
-    """Log the exception and return the exit code"""
-    logger.error(msg + f": {exception}", exc_info=True)
-
-    return const.ERROR_EXIT_CODE
-
-
-def run() -> None:
-    """Trestle Bot entry point function."""
-
-    args = _parse_cli_arguments()
-    log.set_log_level_from_args(args=args)
+)
+@click.option(
+    "--with-token",
+    type=click.File("r"),
+    required=False,
+    default="-",
+    help="Read token from standard input for authenticated \
+        requests with Git provider (e.g. create pull requests)",
+)
+def auto_sync(
+    branch: str,
+    markdown_path: str,
+    oscal_model: str,
+    file_patterns: str,
+    skip_items: str,
+    skip_assemble: bool,
+    skip_regenerate: bool,
+    check_only: bool,
+    working_dir: str,
+    commit_message: str,
+    pull_request_title: str,
+    committer_name: str,
+    committer_email: str,
+    author_name: str,
+    author_email: str,
+    ssp_index_path: str,
+    target_branch: str,
+    with_token,
+) -> None:
+    """Automatically synchronize data."""
 
     pre_tasks: List[TaskBase] = []
     git_provider: Optional[GitProvider] = None
@@ -186,59 +182,59 @@ def run() -> None:
 
     # Pre-process flags
 
-    if args.oscal_model:
-        if args.oscal_model not in authored_list:
+    if oscal_model:
+        if oscal_model not in authored_list:
             logger.error(
-                f"Invalid value {args.oscal_model} for oscal model. "
+                f"Invalid value {oscal_model} for oscal model. "
                 f"Please use catalog, profile, compdef, or ssp."
             )
             sys.exit(const.ERROR_EXIT_CODE)
 
-        if not args.markdown_path:
+        if not markdown_path:
             logger.error("Must set markdown path with oscal model.")
             sys.exit(const.ERROR_EXIT_CODE)
 
-        if args.oscal_model == "ssp" and args.ssp_index_path == "":
+        if oscal_model == "ssp" and ssp_index_path == "":
             logger.error("Must set ssp_index_path when using SSP as oscal model.")
             sys.exit(const.ERROR_EXIT_CODE)
 
         # Assuming an edit has occurred assemble would be run before regenerate.
         # Adding this to the list first
-        if not args.skip_assemble:
+        if not skip_assemble:
             assemble_task = AssembleTask(
-                args.working_dir,
-                args.oscal_model,
-                args.markdown_path,
-                args.ssp_index_path,
-                comma_sep_to_list(args.skip_items),
+                working_dir,
+                oscal_model,
+                markdown_path,
+                ssp_index_path,
+                comma_sep_to_list(skip_items),
             )
             pre_tasks.append(assemble_task)
         else:
             logger.info("Assemble task skipped")
 
-        if not args.skip_regenerate:
+        if not skip_regenerate:
             regenerate_task = RegenerateTask(
-                args.working_dir,
-                args.oscal_model,
-                args.markdown_path,
-                args.ssp_index_path,
-                comma_sep_to_list(args.skip_items),
+                working_dir,
+                oscal_model,
+                markdown_path,
+                ssp_index_path,
+                comma_sep_to_list(skip_items),
             )
             pre_tasks.append(regenerate_task)
         else:
             logger.info("Regeneration task skipped")
 
-    if args.target_branch:
-        if not args.with_token:
+    if target_branch:
+        if not with_token:
             logger.error("with-token value cannot be empty")
             sys.exit(const.ERROR_EXIT_CODE)
 
         if is_github_actions():
-            git_provider = GitHub(access_token=args.with_token.read().strip())
+            git_provider = GitHub(access_token=with_token.read().strip())
         elif is_gitlab_ci():
             server_api_url = get_gitlab_root_url()
             git_provider = GitLab(
-                api_token=args.with_token.read().strip(), server_url=server_api_url
+                api_token=with_token.read().strip(), server_url=server_api_url
             )
         else:
             logger.error(
@@ -255,19 +251,19 @@ def run() -> None:
     # throws an exception update the exit code accordingly
     try:
         commit_sha, pr_number = bot.run(
-            working_dir=args.working_dir,
-            branch=args.branch,
-            commit_name=args.committer_name,
-            commit_email=args.committer_email,
-            commit_message=args.commit_message,
-            author_name=args.author_name,
-            author_email=args.author_email,
+            working_dir=working_dir,
+            branch=branch,
+            commit_name=committer_name,
+            commit_email=committer_email,
+            commit_message=commit_message,
+            author_name=author_name,
+            author_email=author_email,
             pre_tasks=pre_tasks,
-            patterns=comma_sep_to_list(args.file_patterns),
+            patterns=comma_sep_to_list(file_patterns),
             git_provider=git_provider,
-            target_branch=args.target_branch,
-            pull_request_title=args.pull_request_title,
-            check_only=args.check_only,
+            target_branch=target_branch,
+            pull_request_title=pull_request_title,
+            check_only=check_only,
         )
 
         # Print the full commit sha
@@ -282,6 +278,87 @@ def run() -> None:
         exit_code = handle_exception(e)
 
     sys.exit(exit_code)
+
+
+@run.command()
+@click.option("--output", type=str, required=True, help="Name of the output SSP file")
+@click.option("--profile", required=True, type=str, help="Name of the profile to use")
+@click.option(
+    "--component-definitions",
+    required=False,
+    type=str,
+    help="Comma-separated list of component definitions to use",
+)
+@click.option(
+    "--filtered-ssp",
+    required=False,
+    type=str,
+    help="Comma-separated list of component definitions to use",
+)
+@click.option(
+    "--leveraged-ssp",
+    required=False,
+    type=str,
+    help="Comma-separated list of component definitions to use",
+)
+@click.option(
+    "--markdown-path", required=True, type=str, help="Path to Trestle markdown files"
+)
+@click.option(
+    "--working-dir",
+    required=False,
+    type=str,
+    default=".",
+    help="Working directory wit git repository",
+)
+@click.option(
+    "--ssp-index-path",
+    required=False,
+    type=str,
+    default="ssp-index.json",
+    help="Path to ssp index file",
+)
+def create_new_ssp(
+    output: str,
+    profile: str,
+    markdown_path: str,
+    component_definitions: str,
+    ssp_index_path: str,
+    filtered_ssp: str,
+    leveraged_ssp: str,
+    working_dir: str,
+) -> None:
+    """Create a new SSP."""
+
+    exit_code: int = const.SUCCESS_EXIT_CODE
+
+    # Assume it is a successful run, if the bot
+    # throws an exception update the exit code accordingly
+    try:
+        ssp_index = SSPIndex(ssp_index_path)
+        authored_ssp = AuthoredSSP(working_dir, ssp_index)
+
+        comps = comma_sep_to_list(component_definitions)
+        if filtered_ssp:
+            authored_ssp.create_new_with_filter(output, filtered_ssp, profile, comps)
+        else:
+            authored_ssp.create_new_default(
+                output, profile, comps, markdown_path, leveraged_ssp
+            )
+
+    except Exception as e:
+        exit_code = handle_exception(e)
+
+    sys.exit(exit_code)
+
+
+def handle_exception(
+    exception: Exception, msg: str = "Exception occurred during execution"
+) -> int:
+    """Log the exception and return the exit code"""
+    logger.error(msg + f": {exception}", exc_info=True)
+
+    return const.ERROR_EXIT_CODE
 
 
 def comma_sep_to_list(string: str) -> List[str]:

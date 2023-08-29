@@ -24,6 +24,7 @@ gitpython = "^3.1.31"
 compliance-trestle = {git = "https://github.com/RedHatProductSecurity/compliance-trestle.git", rev = "bb19091d08025f630379da59cba42b64e4701839"}
 github3-py = "^4.0.1"
 python-gitlab = "^3.15.0"
+click = "^8.1.7"
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "^6.0.0"
