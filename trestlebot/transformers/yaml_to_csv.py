@@ -20,6 +20,7 @@ import logging
 import pathlib
 from typing import Any, Dict, List
 
+from pydantic import ValidationError
 from ruamel.yaml import YAML
 from trestle.common.const import TRESTLE_GENERIC_NS
 from trestle.tasks.csv_to_oscal_cd import (
@@ -40,13 +41,15 @@ from trestle.tasks.csv_to_oscal_cd import (
 )
 
 from trestlebot import const
+from trestlebot.transformers.base_transformer import (
+    RulesTransformer,
+    RulesTransformerException,
+)
 from trestlebot.transformers.trestle_rule import (
     ComponentInfo,
     Control,
     Parameter,
     Profile,
-    RulesTransformer,
-    RulesTransformerException,
     TrestleRule,
 )
 
@@ -111,6 +114,8 @@ class RulesYAMLTransformer(RulesTransformer):
 
         except KeyError as e:
             raise RulesTransformerException(f"Missing key in YAML file: {e}")
+        except ValidationError as e:
+            raise RulesTransformerException(f"Invalid YAML file: {e}")
         except Exception as e:
             raise RuntimeError(e)
 

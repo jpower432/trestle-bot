@@ -28,7 +28,7 @@ from trestle.tasks.csv_to_oscal_cd import CsvToOscalComponentDefinition
 
 import trestlebot.const as const
 from trestlebot.tasks.base_task import TaskBase, TaskException
-from trestlebot.transformers.trestle_rule import (
+from trestlebot.transformers.base_transformer import (
     RulesTransformer,
     RulesTransformerException,
 )

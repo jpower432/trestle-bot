@@ -23,12 +23,12 @@ from typing import List
 import pytest
 
 from tests.testutils import YAML_TEST_DATA_PATH
+from trestlebot.transformers.base_transformer import RulesTransformerException
 from trestlebot.transformers.trestle_rule import (
     ComponentInfo,
     Control,
     Parameter,
     Profile,
-    RulesTransformerException,
     TrestleRule,
 )
 from trestlebot.transformers.yaml_to_csv import CSVBuilder, RulesYAMLTransformer
@@ -123,8 +123,8 @@ def test_rule_transformer() -> None:
     assert rule.profile.href == "profiles/simplified_nist_profile/profile.json"
 
 
-def test_rules_transform_with_invalid_rule() -> None:
-    """Test rules transform with invalid rule."""
+def test_rules_transform_with_incomplete_rule() -> None:
+    """Test rules transform with incomplete rule."""
     # Generate test json string
     test_string = '{"test_json": "test"}'
     transformer = RulesYAMLTransformer()
@@ -134,3 +134,19 @@ def test_rules_transform_with_invalid_rule() -> None:
         match="Missing key in YAML file: 'x-trestle-rule-info'",
     ):
         transformer.transform(test_string)
+
+
+def test_rules_transform_with_invalid_rule() -> None:
+    """Test rules transform with invalid rule."""
+    # load rule from path and close the file
+    # get the file info as a string
+    rule_path = YAML_TEST_DATA_PATH / "test_invalid_rule.yaml"
+    rule_file = open(rule_path, "r")
+    rule_file_info = rule_file.read()
+    rule_file.close()
+    transformer = RulesYAMLTransformer()
+
+    with pytest.raises(
+        RulesTransformerException, match="Invalid YAML file: 1 validation error .*"
+    ):
+        transformer.transform(rule_file_info)
