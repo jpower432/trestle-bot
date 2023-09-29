@@ -52,6 +52,7 @@ from trestlebot.transformers.trestle_rule import (
     Profile,
     TrestleRule,
 )
+from trestlebot.transformers.base_transformer import RulesTransformer, RulesTransformerException
 
 
 logger = logging.getLogger(__name__)
