@@ -4,7 +4,8 @@ name: CI
 on:
   push:
   pull_request:
-    branches: main
+    branches: 
+    - main
 
 concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}
@@ -36,6 +37,9 @@ jobs:
       
       - name: Set up poetry and install
         uses: ./.github/actions/setup-poetry
+
+      - name: Install pre-commit
+        run: pre-commit install
       
       - name: Run checks
         run: make lint
