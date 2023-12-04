@@ -11,12 +11,7 @@ repos:
         types: [python]
         exclude: "^tests/.+$"
         args: ["--config", "p/bandit", "--error", --metrics=off]
-  - repo: https://github.com/oxsecurity/megalinter
-    rev: v6.8.0 # Git tag specifying the hook, not mega-linter-runner, version
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.1
     hooks:
-      - id: megalinter-incremental # Faster, less thorough
-        stages:
-          - commit
-      - id: megalinter-full # Slower, more thorough
-        stages:
-          - push
+      - id: gitleaks
