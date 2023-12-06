@@ -28,7 +28,7 @@ jobs:
       skip_tests: ${{ steps.check_event.outputs.event_type == 'release'
                     || (steps.check_event.outputs.event_type == 'workflow_dispatch'
                       && github.event.inputs.skip_tests == 'true') }}
-      image: ${{ env.IMAGE_REGISTRY }}/${{ vars.QUAY_ORG }}/${{ env.IMAGE_NAME }}@${{ steps.build-image.outputs.digest }}
+      image: ${{ steps.push-image.outputs.imageid }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -45,6 +45,10 @@ jobs:
           username: ${{ secrets.QUAY_USER }}
           password: ${{ secrets.QUAY_TOKEN }}
           registry: ${{ env.IMAGE_REGISTRY }}
+      
+      - name: Get image repository
+        id: get_image_repo
+        run: echo "image_repo=${{ env.IMAGE_REGISTRY }}/${{ vars.QUAY_ORG }}/${{ env.IMAGE_NAME }}" >> "$GITHUB_OUTPUT"
 
       - name: Check if triggered by release or workflow dispatch
         id: check_event
@@ -65,26 +69,27 @@ jobs:
       
       - name: Build and export to Docker
         uses: docker/build-push-action@v5
+        id: build-image
         with:
           load: true
-          tags: ${{ env.IMAGE_REGISTRY }}/${{ vars.QUAY_ORG }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+          tags: ${{ steps.get_image_repo.outputs.image_repo }}:${{ env.TAG }}
       
       - name: Pre-push Image Scan
         uses: aquasecurity/trivy-action@0.14.0
         with:
-          image-ref: ${{ env.IMAGE_REGISTRY }}/${{ vars.QUAY_ORG }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+          image-ref: ${{ steps.build-image.outputs.imageid }}
           exit-code: 1
           scanners: secret
           severity: HIGH,CRITICAL,MEDIUM
 
       - name: Build and Push
         uses: docker/build-push-action@v5
-        id: build-image
+        id: push-image
         with:
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: ${{ env.IMAGE_REGISTRY }}/${{ vars.QUAY_ORG }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+          tags: ${{ steps.get_image_repo.outputs.image_repo }}:${{ env.TAG }}
 
   test:
     permissions:
