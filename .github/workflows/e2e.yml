@@ -1,6 +1,12 @@
 name: E2E
 
 on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Name of the trestlebot image you want to test."
+        type: string
+        required: true
   workflow_call:
     inputs:
       image:
