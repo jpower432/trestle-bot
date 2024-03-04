@@ -10,6 +10,13 @@ from typing import List, Optional, Tuple
 from git import GitCommandError
 from git.repo import Repo
 from git.util import Actor
+from langchain.chains import MapReduceDocumentsChain, ReduceDocumentsChain
+from langchain.chains.combine_documents.stuff import StuffDocumentsChain
+from langchain.chains.llm import LLMChain
+from langchain.prompts import PromptTemplate
+from langchain_community.document_loaders import WebBaseLoader
+from langchain_openai import ChatOpenAI
+from langchain_text_splitters import CharacterTextSplitter
 
 from trestlebot.provider import GitProvider, GitProviderException
 from trestlebot.tasks.base_task import TaskBase, TaskException
@@ -106,6 +113,7 @@ class TrestleBot:
         git_provider: GitProvider,
         remote_url: str,
         pull_request_title: str,
+        body: str,
     ) -> int:
         """Creates a pull request in the remote repository"""
 
@@ -119,7 +127,7 @@ class TrestleBot:
             head_branch=self.branch,
             base_branch=self.target_branch,
             title=pull_request_title,
-            body="",
+            body=body,
         )
         return pr_number
 
@@ -144,6 +152,65 @@ class TrestleBot:
             except TaskException as e:
                 raise RepoException(f"Bot pre-tasks failed: {e}")
 
+    def _summarize_changes(self, gitwd: Repo) -> str:
+        """Summarize changes in the repository"""
+        # Replace loader with actual loader
+        loader = WebBaseLoader("https://lilianweng.github.io/posts/2023-06-23-agent/")
+        docs = loader.load()
+
+        # TODO: Make LLM configurable
+        llm = ChatOpenAI(temperature=0)
+
+        # Map
+        map_template = """The following is a set of diffs from a git commit
+        {docs}
+        Based on this list of docs, please identify the main changes in the repository.
+        Main Changes:"""
+        map_prompt = PromptTemplate.from_template(map_template)
+        map_chain = LLMChain(llm=llm, prompt=map_prompt)
+
+        reduce_template = """The following is set of summaries:
+        {docs}
+        Take these and distill it into a final, consolidated summary of the main themes.
+        Helpful Answer:"""
+        reduce_prompt = PromptTemplate.from_template(reduce_template)
+
+        # Run chain
+        reduce_chain = LLMChain(llm=llm, prompt=reduce_prompt)
+
+        # Takes a list of documents, combines them into a single string, and passes this to an LLMChain
+        combine_documents_chain = StuffDocumentsChain(
+            llm_chain=reduce_chain, document_variable_name="docs"
+        )
+
+        # Combines and iteratively reduces the mapped documents
+        reduce_documents_chain = ReduceDocumentsChain(
+            # This is final chain that is called.
+            combine_documents_chain=combine_documents_chain,
+            # If documents exceed context for `StuffDocumentsChain`
+            collapse_documents_chain=combine_documents_chain,
+            # The maximum number of tokens to group documents into.
+            token_max=4000,
+        )
+
+        # Combining documents by mapping a chain over them, then combining results
+        map_reduce_chain = MapReduceDocumentsChain(
+            # Map chain
+            llm_chain=map_chain,
+            # Reduce chain
+            reduce_documents_chain=reduce_documents_chain,
+            # The variable name in the llm_chain to put the documents in
+            document_variable_name="docs",
+            # Return the results of the map steps in the output
+            return_intermediate_steps=False,
+        )
+
+        text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
+            chunk_size=1000, chunk_overlap=0
+        )
+        split_docs = text_splitter.split_documents(docs)
+        return map_reduce_chain.run(split_docs)
+
     def run(
         self,
         patterns: List[str],
@@ -153,6 +220,7 @@ class TrestleBot:
         pull_request_title: str = "Automatic updates from bot",
         check_only: bool = False,
         dry_run: bool = False,
+        summarize_changes: bool = False,
     ) -> Tuple[str, int]:
         """
         Runs Trestle Bot logic and returns commit and pull request information.
@@ -211,8 +279,11 @@ class TrestleBot:
                         logger.info(
                             f"Git provider detected, submitting pull request to {self.target_branch}"
                         )
+                        body = (
+                            self._summarize_changes(repo) if summarize_changes else ""
+                        )
                         pr_number = self._create_pull_request(
-                            git_provider, remote_url, pull_request_title
+                            git_provider, remote_url, pull_request_title, body
                         )
                     return commit_sha, pr_number
 
