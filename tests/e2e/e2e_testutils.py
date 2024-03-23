@@ -177,4 +177,5 @@ class E2ETestRunner:
             Tuple[int, str]: Return code and stdout of the command
         """
         result = subprocess.run(command, cwd=working_dir, capture_output=True)
+        print(result.stderr.decode("utf-8"))
         return result.returncode, result.stdout.decode("utf-8")
