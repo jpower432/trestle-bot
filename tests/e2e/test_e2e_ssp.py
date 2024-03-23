@@ -19,7 +19,6 @@ The tests here are based on the following workflow:
 import logging
 import os
 import pathlib
-import subprocess
 from typing import Dict, Tuple
 
 import pytest
@@ -102,12 +101,12 @@ def test_ssp_editing_e2e(
             "profile-name": test_prof,
             "compdefs": test_comp_name,
         }
-        command = e2e_runner.build_test_command(
+        create_command = e2e_runner.build_test_command(
             tmp_repo_str,
             "create-ssp",
             create_args,
         )
-        exit_code, _ = e2e_runner.invoke_command(command)
+        exit_code, response_stdout = e2e_runner.invoke_command(create_command)
         assert exit_code == response
         assert (tmp_repo_path / command_args["markdown-path"]).exists()
 
@@ -124,17 +123,16 @@ def test_ssp_editing_e2e(
         ssp_generate = SSPGenerate()
         assert ssp_generate._run(args) == 0
 
-    command = e2e_runner.build_test_command(tmp_repo_str, "autosync", command_args)
-    run_response = subprocess.run(command, capture_output=True)
-    assert run_response.returncode == response
+    autosync_command = e2e_runner.build_test_command(
+        tmp_repo_str, "autosync", command_args
+    )
+    exit_code, response_stdout = e2e_runner.invoke_command(autosync_command)
+    assert exit_code == response
 
     # Check that the ssp was pushed to the remote
     if response == SUCCESS_EXIT_CODE:
         branch = command_args["branch"]
-        assert (
-            f"Changes pushed to {branch} successfully."
-            in run_response.stdout.decode("utf-8")
-        )
+        assert f"Changes pushed to {branch} successfully." in response_stdout
 
         # Check that the correct files are present with the correct content
         index_path = os.path.join(tmp_repo_str, "ssp-index.json")
@@ -145,8 +143,7 @@ def test_ssp_editing_e2e(
         assert ssp_path.exists()
 
         # Check that if run again, the ssp is not pushed again
-        command = e2e_runner.build_test_command(tmp_repo_str, "autosync", command_args)
-        exit_code, response_stdout = e2e_runner.invoke_command(command)
+        exit_code, response_stdout = e2e_runner.invoke_command(autosync_command)
         assert exit_code == SUCCESS_EXIT_CODE
         assert "Nothing to commit" in response_stdout
 
@@ -169,12 +166,11 @@ def test_ssp_editing_e2e(
         assert exit_code == SUCCESS_EXIT_CODE
         assert (
             f"Changes pushed to {command_args['branch']} successfully."
-            in run_response.stdout.decode("utf-8")
+            in response_stdout
         )
 
         # Autosync again to check that the ssp is updated
-        command = e2e_runner.build_test_command(tmp_repo_str, "autosync", command_args)
-        exit_code, response_stdout = e2e_runner.invoke_command(command)
+        exit_code, response_stdout = e2e_runner.invoke_command(autosync_command)
         assert exit_code == SUCCESS_EXIT_CODE
         assert (
             f"Changes pushed to {command_args['branch']} successfully."
