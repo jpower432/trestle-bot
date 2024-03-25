@@ -34,15 +34,30 @@ class ValidationOutcome(BaseModel):
     valid: bool
 
 
+# Validation function type
+ValidationFunction = Callable[[Dict[str, Any], ValidationOutcome], None]
+
+
 class ValidationHandler:
     def __init__(  # type: ignore
-        self, validate_fn: Callable[[Any, ValidationOutcome], None], next_handler=None
+        self, validation_function: ValidationFunction, next_handler=None
     ) -> None:
-        self.validate_fn: Callable[[Any, ValidationOutcome], None] = validate_fn
+        """Initialize the ValidationHandler."""
+        self.validate_function: ValidationFunction = validation_function
         self.next_handler: Optional[ValidationHandler] = next_handler
 
-    def handle(self, data: Any, result: ValidationOutcome) -> None:
-        self.validate_fn(data, result)
+    def handle(self, data: Dict[str, Any], result: ValidationOutcome) -> None:
+        """
+        Handle validation for the given rule data.
+
+        Args:
+            data (Any): The data to be validated.
+            result (ValidationOutcome): The outcome of the validation.
+
+        Returns:
+            None
+        """
+        self.validate_function(data, result)
         if self.next_handler:
             self.next_handler.handle(data, result)
 
