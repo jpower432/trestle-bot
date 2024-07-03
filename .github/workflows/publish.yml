@@ -98,6 +98,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - run: podman version
+
       - name: Build and Publish the image
         uses: ./.github/actions/publish-image
         id: build_publish_image
