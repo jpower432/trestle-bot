@@ -1,0 +1,105 @@
+name: "trestle-bot-create-cd"
+author: "Red Hat Product Security"
+description: "An action for component definition bootstrapping"
+
+inputs:
+  config-file:
+    description: "Where can the config file be found in the project?"
+    required: false
+    default: 'config.yml'
+  dry_run: 
+    description: "Runs tasks without pushing changes to the repository."
+    required: false
+    default: "false"
+  github_token:
+    description: |
+      "GitHub token used to make authenticated API requests.
+      Note: You should use a defined secret like "secrets.GITHUB_TOKEN" in your workflow file, do not hardcode the token."
+    required: false
+  version:
+    description: "Version of the OSCAL model to set during assembly into JSON."
+    required: false
+  skip_assemble:
+    description: "Skip assembly task. Defaults to false"
+    required: false
+    default: "false"
+  skip_regenerate:
+    description: "Skip regenerate task. Defaults to false."
+    required: false
+    default: "false"
+  commit_message:
+    description: Custom commit message
+    required: false
+    default: "Sync automatic updates"
+  pull_request_title:
+    description: Custom pull request title
+    required: false
+    default: "Automatic updates from trestlebot"
+  branch:
+    description: Name of the Git branch to which modifications should be pushed. Required if Action is used on the `pull_request` event.
+    required: false
+    default: ${{ github.ref_name }}
+  target_branch:
+    description: Target branch (or base branch) to create a pull request against. If unset, no pull request will be created. If set, a pull request will be created using the `branch` field as the head branch.
+    required: false
+  file_pattern:
+    description: Comma separated file pattern list used for `git add`. For example `component-definitions/*,*json`. Defaults to (`.`)
+    required: false
+    default: '.'
+  repository:
+    description: Local file path to the git repository with a valid trestle project root relative to the GitHub workspace.
+    required: false
+    default: '.'
+  commit_user_name:
+    description: Name used for the commit user.
+    required: false
+    default: github-actions[bot]
+  commit_user_email:
+    description: Email address used for the commit user
+    required: false
+    default: 41898282+github-actions[bot]@users.noreply.github.com
+  commit_author_name:
+    description: Name used for the commit author. Defaults to the username of whoever triggered this workflow run.
+    required: false
+    default: ${{ github.actor }}
+  commit_author_email:
+    description: Email address used for the commit author.
+    required: false
+    default: ${{ github.actor }}@users.noreply.github.com
+  verbose:
+    description: Enable verbose logging
+    required: false
+    default: "false"
+
+outputs:
+  changes:
+    description: Value is "true" if changes were committed back to the repository.
+  commit:
+    description: Full hash of the created commit. Only present if the "changes" output is "true".
+  pr_number:
+    description: Number of the submitted pull request. Only present if a pull request is submitted.
+
+runs:
+  using: "docker"
+  image: "docker://quay.io/continuouscompliance/trestle-bot:v1"
+  entrypoint: "trestlebot autosync"
+  env:
+    TRESTLEBOT_REPO_ACCESS_TOKEN: ${{ inputs.github_token }}
+    CONFIG-FILE: ${{ inputs.config_file}}
+    DRY-RUN: ${{ inputs.dry_run }}
+    VERBOSE: ${{inputs.verbose }}
+    COMMIT_AUTHOR_EMAIL: ${{ inputs.commit_author_email }}
+    COMMIT_AUTHOR_NAME: ${{ inputs.commit_author_name }}
+    COMMIT_USER_EMAIL: ${{ inputs.commit_user_email }}
+    COMMIT_USER_NAME: ${{ inputs.commit_user_name }}
+    FILE_PATTEN: ${{ input.file_pattern }}
+    COMMIT_MESSAGE: ${{ inputs.commit_message }}
+    TARGET_BRANCH: ${{ inputs.target_branch }}
+    BRANCH: ${{ inputs.branch }}
+    PULL_REQUEST_TILE: ${{ inputs.pull_request_title }}
+    SKIP_ASSEMBLE: ${{ inputs.skip_assemble }}
+    SKIP_REGENERATE: ${{ inputs.skip_regenerate}}
+    VERSION: ${{ inputs.version }}
+branding:
+  icon: "check"
+  color: "green"

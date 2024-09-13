@@ -1,0 +1,11 @@
+version: 1
+git: 
+  provider-type: github
+  git-server-url: github.com
+models:
+# we could allow for multiple or keep this as one
+  - working-dir: "."
+    oscal-model: "ssp"
+    markdown-path: "md_ssp"
+    skip-items: ""
+    
