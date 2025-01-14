@@ -7,12 +7,13 @@
 import os
 import pathlib
 
+import pytest
 from trestle.common.model_utils import ModelUtils
 from trestle.core.models.file_content_type import FileContentType
 from trestle.oscal.profile import CombinationMethodValidValues, Profile
 
 from tests import testutils
-from trestlebot.tasks.authored.profile import AuthoredProfile
+from trestlebot.tasks.authored.profile import AuthoredProfile, CatalogControlResolver
 
 
 test_prof = "simplified_nist_profile"
@@ -108,3 +109,23 @@ def test_create_or_update(tmp_trestle_dir: str) -> None:
 
     updated = authored_prof.create_or_update(cat_path, test_prof, ["ac-1", "ac-2"])
     assert not updated
+
+
+@pytest.mark.parametrize(
+    "input, response",
+    [
+        ("AC-1", "ac-1"),
+        ("AC-2(2)", "ac-2.2"),
+        ("ac-1_smt.a", "ac-1_smt.a"),
+        ("AC-200", None),
+    ],
+)
+def test_control_resolver(tmp_trestle_dir: str, input: str, response: str) -> None:
+    "Test the CatalogControlResolver class."
+    trestle_root = pathlib.Path(tmp_trestle_dir)
+    _ = testutils.setup_for_catalog(trestle_root, test_cat, test_cat)
+    c2l = CatalogControlResolver(trestle_root)
+    cat_path = trestle_root.joinpath("catalogs", test_cat, "catalog.json")
+    c2l.load(cat_path)
+    result_id = c2l.get_id(input)
+    assert result_id == response

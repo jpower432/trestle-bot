@@ -10,7 +10,7 @@ from typing import Any, List
 
 import click
 
-from trestlebot.cli.options.common import common_options, git_options
+from trestlebot.cli.options.common import common_options, git_options, handle_exceptions
 from trestlebot.cli.utils import run_bot
 from trestlebot.const import ERROR_EXIT_CODE
 from trestlebot.tasks.authored.compdef import AuthoredComponentDefinition

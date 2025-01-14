@@ -1,19 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2024 Red Hat, Inc.
+
 # Current work for sync_cac_content_profile
 # Task to leverage ComplianceasCode/content ControlsManager
 # Interaction with CLI
 import logging
 import os
-from typing import Any, Dict, List
+import pathlib
+from typing import List, Set
 
-from ssg.controls import ControlsManager
-from ssg.products import (
-    get_profile_files_from_root,
-    load_product_yaml,
-    product_yaml_path,
-)
+from ssg.controls import Control, ControlsManager, Policy  # type: ignore
+from ssg.products import load_product_yaml, product_yaml_path
 
 from trestlebot import const
-from trestlebot.tasks.authored.profile import AuthoredProfile
+from trestlebot.tasks.authored.profile import AuthoredProfile, CatalogControlResolver
 from trestlebot.tasks.base_task import TaskBase, TaskException
 
 
@@ -37,40 +37,51 @@ class SyncCacContentProfileTask(TaskBase):
         self.filter_by_level = filter_by_level
         self.authored_profile = authored_profile
         working_dir = self.authored_profile.get_trestle_root()
+        self.catalog_helper = CatalogControlResolver(working_dir)
         super().__init__(working_dir=working_dir, model_filter=None)
 
-    def get_control_ids_by_level(self, policy_id: str, filter_by_level: str) -> None:
+    def get_control_ids_by_level(self) -> None:
         """
-        Collecting control file product data
+        Collecting control file product data.
         """
 
         product_yml_path = product_yaml_path(self.cac_content_root, self.product)
         product_data = load_product_yaml(product_yml_path)
-
         control_manager = ControlsManager(
             os.path.join(self.cac_content_root, "controls"), product_data
         )
-
         control_manager.load()
+
         # accessing control file within content/controls
         # the instance can use the methods within the ControlsManager() class
 
         # TODO Ask Marcus to address use of get_policy in PR notes
-        default_levels = control_manager.get_all_controls(policy_id)
-        extract_policy = control_manager._get_policy(policy_id)
+
+        policy: Policy = control_manager._get_policy(self.policy_id)
+        levels: Set[str] = set()
+        for level in policy.levels:
+            levels.add(level.id)
+        if self.filter_by_level:
+            levels = levels.intersection(self.filter_by_level)
+            if not levels:
+                raise TaskException(
+                    f"Specified levels {' '.join(self.filter_by_level)} do not match found "
+                    + f"levels in {self.policy_id}."
+                )
+
         logger.debug(
-            f"Organizing controls based on {filter_by_level}. If no level is specified, all controls will be organized."
+            f"Organizing controls based on {levels}. If no level is specified, all controls will be organized."
         )
-        if not filter_by_level:
-            all_controls = control_manager.get_all_controls(policy_id)
-            self.create_oscal_profile(all_controls)
-            logger.debug(
-                f"No level indicated. Sorting based on {policy_id} default levels."
-            )
+        if not levels:
+            logger.debug("No levels detected. Create profile with all controls.")
+            all_controls = control_manager.get_all_controls(self.policy_id)
+            self.create_oscal_profile(all_controls, "all")
         else:
-            for level in filter_by_level:
-                eligible_controls = control_manager.get_all_controls_of_level(level)
-                self.create_oscal_profile(eligible_controls)
+            for level in levels:
+                eligible_controls = control_manager.get_all_controls_of_level(
+                    self.policy_id, level
+                )
+                self.create_oscal_profile(eligible_controls, level)
                 # make oscal profile
                 logger.debug(f"Creating oscal profile using {eligible_controls}.")
                 # if filter_by_profile = "high" filter_by_profile.upper()
@@ -78,31 +89,44 @@ class SyncCacContentProfileTask(TaskBase):
 
     def create_oscal_profile(
         self,
-        import_path: str,
-        controls: List[str],
-        name_update: str,
+        controls: List[Control],
+        level: str,
     ) -> None:
         # Step 1: If filter by level returns eligible controls, create OSCAL profile with suffix change based on level
         # Step 2: Fill in with control id, loading from eligible controls and all controls
-        self.import_path = import_path
-        self.controls = controls
-        # catalog is import_path
-        self.name_update = name_update
-        name_update = f"{self.policy_id}-{self.filter_by_level}.json"
+        name_update = f"{self.policy_id}-{level}"
         # If the import_path is not valid then create new default (based on tasks/authored/profile.py)
         # Otherwise the existing copy is held as a deep copy and will be accessible even if changing profile inputs
         # Checks for importing model types (catalog, baseline)
         # AuthoredProfile will update based on existing_import
         # If the models aren't equivalent based on the deep copy of the existing profile
         # Then modelUtils will update profile element that was recently updated and write to the profile_path
-        self.authored_profile.create_new_default(controls, name_update)
+
+        # label properties for controls are a common way to store the control formatted for display.
+        # This is the way they are represented in control files.
+        resolved_controls: List[str] = list()
+        for control in controls:
+            control_id = self.catalog_helper.get_id(control.id)
+            if not control_id:
+                logger.debug(f"{control.id} not found in catalog")
+                continue
+            resolved_controls.append(control_id)
+
+        if not resolved_controls:
+            raise TaskException(
+                f"No controls in {self.policy_id} found in {self.oscal_catalog}"
+            )
+        written = self.authored_profile.create_or_update(
+            self.oscal_catalog, name_update, resolved_controls
+        )
+        if not written:
+            logger.info(f"No updated for profile {name_update}")
 
     def execute(self) -> int:
         # calling to get_control_ids _by_level and checking for valid control file name
         try:
-            self.get_control_ids_by_level(
-                policy_id=self.policy_id, filter_by_level=self.filter_by_level
-            )
+            self.catalog_helper.load(pathlib.Path(self.oscal_catalog))
+            self.get_control_ids_by_level()
         except KeyError as e:
             raise TaskException(
                 f"The control file associated with {self.policy_id} does not exist."
