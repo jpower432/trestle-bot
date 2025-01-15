@@ -182,12 +182,18 @@ def test_missing_required_profile_option(tmp_repo: Tuple[str, Repo]) -> None:
     repo_dir, _ = tmp_repo
     repo_path = pathlib.Path(repo_dir)
 
+    setup_for_catalog(repo_path, test_cat, "catalog")
+
     runner = CliRunner()
     result = runner.invoke(
         sync_cac_content_profile_cmd,
         [
-            "--policy-id",
-            test_policy_id,
+            "--cac-content-root",
+            test_content_dir,
+            "--product",
+            test_product,
+            # "--policy-id",
+            # test_policy_id,
             "--oscal-catalog",
             test_cat,
             "--repo-path",
@@ -208,8 +214,41 @@ def test_invalid_subcommand() -> None:
     """Tests missing required options in sync-cac-content-profile subcommand."""
 
     runner = CliRunner()
-    result = runner.invoke(sync_cac_content_profile_cmd, ["Invalid"])
+    result = runner.invoke(sync_cac_content_profile_cmd, ["--Invalid"])
     assert result.exit_code == 2
+
+
+def test_profile_supplied(tmp_repo: Tuple[str, Repo]) -> None:
+    """Tests sync Cac profile content to create OSCAL Profile."""
+    repo_dir, _ = tmp_repo
+    repo_path = pathlib.Path(repo_dir)
+    setup_for_catalog(repo_path, test_cat, "catalog")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        sync_cac_content_profile_cmd,
+        [
+            "--repo-path",
+            str(repo_path.resolve()),
+            "--cac-content-root",
+            test_content_dir,
+            "--product",
+            test_product,
+            "--oscal-catalog",
+            test_cat,
+            "--policy-id",
+            test_policy_id,
+            "--filter-by-level",
+            "medium",
+            "--committer-email",
+            "test@email.com",
+            "--committer-name",
+            "test name",
+            "--branch",
+            "test",
+        ],
+    )
+    assert result.exit_code == 0
 
 
 # Profile test 2 - Need additional data
@@ -226,7 +265,7 @@ def test_created_oscal_profile(tmp_repo: Tuple[str, Repo]) -> None:
         sync_cac_content_profile_cmd,
         [
             "--cac-content-root",
-            #test_content_dir,
+            # test_content_dir,
             "tests/data/content_dir",
             "--product",
             test_product,

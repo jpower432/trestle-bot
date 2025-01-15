@@ -48,8 +48,9 @@ class SyncCacContentProfileTask(TaskBase):
         self.policy_id = policy_id
         self.filter_by_level = filter_by_level
         self.authored_profile = authored_profile
-        working_dir = self.authored_profile.get_trestle_root()
+        working_dir = pathlib.Path(authored_profile.get_trestle_root())
         self.catalog_helper = CatalogControlResolver(working_dir)
+        working_dir = authored_profile.get_trestle_root()
         super().__init__(working_dir=working_dir, model_filter=None)
 
     def get_control_ids_by_level(
@@ -112,9 +113,7 @@ class SyncCacContentProfileTask(TaskBase):
     ) -> None:
         """
         Args:
-            import_path (str): The supplied catalog or profile to use for authoring OSCAL Profiles.
             controls (List[str]): List of controls to include in the profile based on level handling.
-            name_update (str): Name update to use based on filter_by_level user input
             level (str): The level to filter control files for.
         Returns:
             None. Follows through by using AuthoredProfile task to create or update OSCAL Profiles.
