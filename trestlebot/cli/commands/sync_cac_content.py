@@ -16,8 +16,6 @@ from trestlebot.const import ERROR_EXIT_CODE
 from trestlebot.tasks.authored.profile import AuthoredProfile
 from trestlebot.tasks.base_task import TaskBase
 from trestlebot.tasks.sync_cac_content_profile_task import SyncCacContentProfileTask
-
-# from trestlebot.tasks.sync_cac_content_profile_task import SyncCacContentProfileTask
 from trestlebot.tasks.sync_cac_content_task import SyncCacContentTask
 
 
@@ -92,7 +90,8 @@ def sync_cac_content_cmd(ctx: click.Context, **kwargs: Any) -> None:
 
 
 @click.command(
-    name="sync-cac-content-profile", help="Authoring Oscal Profiles with synced CaC content."
+    name="sync-cac-content-profile",
+    help="Authoring Oscal Profiles with synced CaC content.",
 )
 @click.pass_context
 @common_options
@@ -124,6 +123,7 @@ def sync_cac_content_cmd(ctx: click.Context, **kwargs: Any) -> None:
     "--filter-by-level",
     type=list(),
     required=False,
+    multiple=True,
     help="Optionally produce OSCAL Profiles by filtered baseline level.",
 )
 @handle_exceptions
@@ -142,7 +142,7 @@ def sync_cac_content_profile_cmd(
     pre_tasks: List[TaskBase] = []
 
     working_dir = kwargs["repo_path"]
-    #working_dir = str(kwargs["repo_path"].resolve())
+    # working_dir = str(kwargs["repo_path"].resolve())
     cac_content_root = kwargs["cac_content_root"]
     product = kwargs["product"]
     oscal_catalog = kwargs["oscal_catalog"]
@@ -165,4 +165,5 @@ def sync_cac_content_profile_cmd(
 
     pre_tasks.append(sync_cac_content_profile_task)
     run_bot(pre_tasks, kwargs)
+
 
