@@ -13,7 +13,6 @@ import click
 from trestlebot.cli.options.common import common_options, git_options, handle_exceptions
 from trestlebot.cli.utils import run_bot
 from trestlebot.const import ERROR_EXIT_CODE
-from trestlebot.tasks.authored.compdef import AuthoredComponentDefinition
 from trestlebot.tasks.authored.profile import AuthoredProfile
 from trestlebot.tasks.base_task import TaskBase
 from trestlebot.tasks.sync_cac_content_profile_task import SyncCacContentProfileTask
@@ -123,7 +122,7 @@ def sync_cac_content_cmd(ctx: click.Context, **kwargs: Any) -> None:
 )
 @click.option(
     "--filter-by-level",
-    type=List[str],
+    type=list(),
     required=False,
     help="Optionally produce OSCAL Profiles by filtered baseline level.",
 )
