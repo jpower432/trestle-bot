@@ -48,8 +48,8 @@ class SyncCacContentProfileTask(TaskBase):
         self.policy_id = policy_id
         self.filter_by_level = filter_by_level
         self.authored_profile = authored_profile
-        working_dir = authored_profile.get_trestle_root()
-        self.catalog_helper = CatalogControlResolver(pathlib.Path(working_dir))
+        working_dir = self.authored_profile.get_trestle_root()
+        self.catalog_helper = CatalogControlResolver(working_dir)
         super().__init__(working_dir=working_dir, model_filter=None)
 
     def get_control_ids_by_level(
