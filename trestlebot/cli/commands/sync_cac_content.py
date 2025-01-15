@@ -121,9 +121,10 @@ def sync_cac_content_cmd(ctx: click.Context, **kwargs: Any) -> None:
 )
 @click.option(
     "--filter-by-level",
-    type=list(),
+    type=str,
     required=False,
     multiple=True,
+    default=list(),
     help="Optionally produce OSCAL Profiles by filtered baseline level.",
 )
 @handle_exceptions
@@ -165,5 +166,3 @@ def sync_cac_content_profile_cmd(
 
     pre_tasks.append(sync_cac_content_profile_task)
     run_bot(pre_tasks, kwargs)
-
-

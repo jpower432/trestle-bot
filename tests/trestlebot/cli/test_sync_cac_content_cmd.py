@@ -26,6 +26,7 @@ test_cat = "simplified_nist_catalog"
 test_comp_path = f"component-definitions/{test_product}/component-definition.json"
 test_policy_id = "abcd-levels"
 
+
 def test_missing_required_option(tmp_repo: Tuple[str, Repo]) -> None:
     """Tests missing required options in sync-cac-content command."""
 
@@ -173,6 +174,7 @@ def test_sync_product_create_validation_component(tmp_repo: Tuple[str, Repo]) ->
     assert component.title == "openscap"
     assert component.type == "validation"
 
+
 # Working
 def test_missing_required_profile_option(tmp_repo: Tuple[str, Repo]) -> None:
     """Tests missing required options in sync-cac-content-profile subcommand."""
@@ -199,13 +201,17 @@ def test_missing_required_profile_option(tmp_repo: Tuple[str, Repo]) -> None:
         ],
     )
     assert result.exit_code == 2
+
+
 # Profile test 1 - check in CI
 def test_invalid_subcommand() -> None:
     """Tests missing required options in sync-cac-content-profile subcommand."""
 
     runner = CliRunner()
-    result = runner.invoke(sync_cac_content_profile_cmd,["Invalid"])
+    result = runner.invoke(sync_cac_content_profile_cmd, ["Invalid"])
     assert result.exit_code == 2
+
+
 # Profile test 2 - Need additional data
 def test_created_oscal_profile(tmp_repo: Tuple[str, Repo]) -> None:
     """Tests creation of OSCAL profile and change of .json title."""
@@ -240,6 +246,7 @@ def test_created_oscal_profile(tmp_repo: Tuple[str, Repo]) -> None:
         ],
     )
     assert result.exit_code == 0
+
 
 def test_sync_profile_product_name(tmp_repo: Tuple[str, Repo]) -> None:
     """Tests sync Cac content product name to OSCAL component title ."""
@@ -278,5 +285,3 @@ def test_sync_profile_product_name(tmp_repo: Tuple[str, Repo]) -> None:
     # Check if the component definition is created
     profile = repo_path.joinpath(test_prof)
     assert profile.exists()
-
-
