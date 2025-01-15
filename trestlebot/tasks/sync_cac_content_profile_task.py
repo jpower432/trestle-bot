@@ -1,9 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) 2024 Red Hat, Inc.
 
-# Current work for sync_cac_content_profile
-# Task to leverage ComplianceasCode/content ControlsManager
-# Interaction with CLI
 import logging
 import os
 import pathlib

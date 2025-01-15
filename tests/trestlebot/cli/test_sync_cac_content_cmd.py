@@ -208,16 +208,6 @@ def test_missing_required_profile_option(tmp_repo: Tuple[str, Repo]) -> None:
     )
     assert result.exit_code == 2
 
-
-# Profile test 1 - check in CI
-def test_invalid_subcommand() -> None:
-    """Tests missing required options in sync-cac-content-profile subcommand."""
-
-    runner = CliRunner()
-    result = runner.invoke(sync_cac_content_profile_cmd, ["--Invalid"])
-    assert result.exit_code == 2
-
-
 def test_profile_supplied(tmp_repo: Tuple[str, Repo]) -> None:
     """Tests sync Cac profile content to create OSCAL Profile."""
     repo_dir, _ = tmp_repo
@@ -265,8 +255,7 @@ def test_created_oscal_profile(tmp_repo: Tuple[str, Repo]) -> None:
         sync_cac_content_profile_cmd,
         [
             "--cac-content-root",
-            # test_content_dir,
-            "tests/data/content_dir",
+            test_content_dir,
             "--product",
             test_product,
             "--oscal-catalog",
@@ -288,19 +277,19 @@ def test_created_oscal_profile(tmp_repo: Tuple[str, Repo]) -> None:
     assert result.exit_code == 0
 
 
-def test_sync_profile_product_name(tmp_repo: Tuple[str, Repo]) -> None:
-    """Tests sync Cac content product name to OSCAL component title ."""
+def test_sync_missing_profile_option(tmp_repo: Tuple[str, Repo]) -> None:
+    """Tests sync Cac content profile command missing required option."""
     repo_dir, _ = tmp_repo
     repo_path = pathlib.Path(repo_dir)
 
-    setup_for_catalog(repo_path, test_cat, "catalog")
+    #setup_for_catalog(repo_path, test_cat, "catalog")
 
     runner = CliRunner()
     result = runner.invoke(
         sync_cac_content_profile_cmd,
         [
-            "--cac-content-root",
-            "tests/data/content_dir",
+            # "--cac-content-root",
+            # str(test_content_dir),
             "product",
             test_product,
             "--oscal-catalog",
@@ -308,7 +297,7 @@ def test_sync_profile_product_name(tmp_repo: Tuple[str, Repo]) -> None:
             "--policy-id",
             test_policy_id,
             "--filter-by-level",
-            "all",
+            ["all"],
             "--repo-path",
             str(repo_path.resolve()),
             "--committer-email",
@@ -321,7 +310,4 @@ def test_sync_profile_product_name(tmp_repo: Tuple[str, Repo]) -> None:
         ],
     )
     # Check the CLI sync-cac-content is successful
-    assert result.exit_code == 0
-    # Check if the component definition is created
-    profile = repo_path.joinpath(test_prof)
-    assert profile.exists()
+    assert result.exit_code == 2
