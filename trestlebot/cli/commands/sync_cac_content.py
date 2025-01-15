@@ -92,8 +92,8 @@ def sync_cac_content_cmd(ctx: click.Context, **kwargs: Any) -> None:
         sys.exit(ERROR_EXIT_CODE)
 
 
-@sync_cac_content_cmd.command(
-    name="oscal-profile", help="Authoring Oscal Profiles with synced CaC content."
+@click.command(
+    name="sync-cac-content-profile", help="Authoring Oscal Profiles with synced CaC content."
 )
 @click.pass_context
 @common_options
@@ -143,6 +143,7 @@ def sync_cac_content_profile_cmd(
     pre_tasks: List[TaskBase] = []
 
     working_dir = kwargs["repo_path"]
+    #working_dir = str(kwargs["repo_path"].resolve())
     cac_content_root = kwargs["cac_content_root"]
     product = kwargs["product"]
     oscal_catalog = kwargs["oscal_catalog"]

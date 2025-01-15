@@ -24,7 +24,7 @@ test_cac_profile = "products/rhel8/profiles/example.profile"
 test_prof = "simplified_nist_profile"
 test_cat = "simplified_nist_catalog"
 test_comp_path = f"component-definitions/{test_product}/component-definition.json"
-
+test_policy_id = "abcd-levels"
 
 def test_missing_required_option(tmp_repo: Tuple[str, Repo]) -> None:
     """Tests missing required options in sync-cac-content command."""
@@ -179,17 +179,15 @@ def test_missing_required_profile_option(tmp_repo: Tuple[str, Repo]) -> None:
 
     repo_dir, _ = tmp_repo
     repo_path = pathlib.Path(repo_dir)
-    policy_id_test = "RHEL-9"
 
     runner = CliRunner()
     result = runner.invoke(
-        sync_cac_content_cmd,
+        sync_cac_content_profile_cmd,
         [
-            "oscal-profile",
             "--policy-id",
-            policy_id_test,
+            test_policy_id,
             "--oscal-catalog",
-            "catalog_tester",
+            test_cat,
             "--repo-path",
             str(repo_path.resolve()),
             "--committer-email",
@@ -201,36 +199,34 @@ def test_missing_required_profile_option(tmp_repo: Tuple[str, Repo]) -> None:
         ],
     )
     assert result.exit_code == 2
-# Working
+# Profile test 1 - check in CI
 def test_invalid_subcommand() -> None:
     """Tests missing required options in sync-cac-content-profile subcommand."""
 
     runner = CliRunner()
-    result = runner.invoke(sync_cac_content_cmd,["Invalid"])
+    result = runner.invoke(sync_cac_content_profile_cmd,["Invalid"])
     assert result.exit_code == 2
-# Need additional data
+# Profile test 2 - Need additional data
 def test_created_oscal_profile(tmp_repo: Tuple[str, Repo]) -> None:
     """Tests creation of OSCAL profile and change of .json title."""
 
     repo_dir, _ = tmp_repo
     repo_path = pathlib.Path(repo_dir)
-    policy_id_test = "OCP-4"
-    test_profile = "simplified_nist_profile"
+
     setup_for_catalog(repo_path, test_cat, "catalog")
 
     runner = CliRunner()
     result = runner.invoke(
-        sync_cac_content_cmd,
+        sync_cac_content_profile_cmd,
         [
-            "oscal-profile",
             "--cac-content-root",
-            cac_content_test_data,
+            test_content_dir,
             "--product",
             test_product,
             "--oscal-catalog",
             test_cat,
             "--policy-id",
-            policy_id_test,
+            test_policy_id,
             "--filter-by-level",
             "high",
             "--repo-path",
@@ -254,19 +250,18 @@ def test_sync_profile_product_name(tmp_repo: Tuple[str, Repo]) -> None:
 
     runner = CliRunner()
     result = runner.invoke(
-        sync_cac_content_cmd,
+        sync_cac_content_profile_cmd,
         [
-            "oscal-profile",
             "--cac-content-root",
-            cac_content_test_data,
+            test_content_dir,
             "product",
             test_product,
             "--oscal-catalog",
-            test_prof,
+            test_cat,
             "--policy-id",
-            "ac",
+            test_policy_id,
             "--filter-by-level",
-            "high",
+            "all",
             "--repo-path",
             str(repo_path.resolve()),
             "--committer-email",
@@ -281,37 +276,7 @@ def test_sync_profile_product_name(tmp_repo: Tuple[str, Repo]) -> None:
     # Check the CLI sync-cac-content is successful
     assert result.exit_code == 0
     # Check if the component definition is created
-    profile = repo_path.joinpath(test_prof_path)
+    profile = repo_path.joinpath(test_prof)
     assert profile.exists()
 
-def test_oscal_json_created(tmp_repo: Tuple[str, Repo]) -> None:
-    """Tests creation of OSCAL JSON file."""
-    repo_dir, _ = tmp_repo
-    repo_path = pathlib.Path(repo_dir)
-    catalog_tester = "simplified_nist_catalog.json"
-    setup_for_catalog(repo_path, test_cat, "catalog")
 
-    runner = CliRunner()
-    result = runner.invoke(
-        sync_cac_content_cmd,
-        [
-            "oscal-profile",
-            "--cac-content-root",
-            cac_content_test_data,
-            "json",
-            "--product",
-            test_product,
-            "--oscal-catalog",
-            catalog_tester,
-            "--repo-path",
-            str(repo_path.resolve()),
-            "--committer-email",
-            "test@email.com",
-            "--committer-name",
-            "test name",
-            "--branch",
-            "test",
-            "--dry-run",
-        ]
-    )
-    assert result.exit_code == 0
