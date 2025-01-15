@@ -98,7 +98,6 @@ def sync_cac_content_cmd(ctx: click.Context, **kwargs: Any) -> None:
 @git_options
 @click.option(
     "--cac-content-root",
-    type=str,
     required=True,
     help="Root of the CaC content project.",
 )

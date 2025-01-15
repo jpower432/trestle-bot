@@ -226,7 +226,8 @@ def test_created_oscal_profile(tmp_repo: Tuple[str, Repo]) -> None:
         sync_cac_content_profile_cmd,
         [
             "--cac-content-root",
-            test_content_dir,
+            #test_content_dir,
+            "tests/data/content_dir",
             "--product",
             test_product,
             "--oscal-catalog",
@@ -260,7 +261,7 @@ def test_sync_profile_product_name(tmp_repo: Tuple[str, Repo]) -> None:
         sync_cac_content_profile_cmd,
         [
             "--cac-content-root",
-            test_content_dir,
+            "tests/data/content_dir",
             "product",
             test_product,
             "--oscal-catalog",
