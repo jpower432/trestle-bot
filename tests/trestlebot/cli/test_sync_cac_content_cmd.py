@@ -208,6 +208,7 @@ def test_missing_required_profile_option(tmp_repo: Tuple[str, Repo]) -> None:
     )
     assert result.exit_code == 2
 
+
 def test_profile_supplied(tmp_repo: Tuple[str, Repo]) -> None:
     """Tests sync Cac profile content to create OSCAL Profile."""
     repo_dir, _ = tmp_repo
@@ -282,7 +283,7 @@ def test_sync_missing_profile_option(tmp_repo: Tuple[str, Repo]) -> None:
     repo_dir, _ = tmp_repo
     repo_path = pathlib.Path(repo_dir)
 
-    #setup_for_catalog(repo_path, test_cat, "catalog")
+    # setup_for_catalog(repo_path, test_cat, "catalog")
 
     runner = CliRunner()
     result = runner.invoke(
