@@ -189,7 +189,7 @@ def test_missing_required_profile_option(tmp_repo: Tuple[str, Repo]) -> None:
         sync_cac_content_profile_cmd,
         [
             "--cac-content-root",
-            test_content_dir,
+            str(test_content_dir),
             "--product",
             test_product,
             # "--policy-id",
@@ -256,7 +256,7 @@ def test_created_oscal_profile(tmp_repo: Tuple[str, Repo]) -> None:
         sync_cac_content_profile_cmd,
         [
             "--cac-content-root",
-            test_content_dir,
+            str(test_content_dir),
             "--product",
             test_product,
             "--oscal-catalog",
